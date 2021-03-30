@@ -1,0 +1,7 @@
+{
+    "username": "username",
+    "channel": "same-as-above",
+    "authToken": "oauth:bunchOfLettersAndNumbers123",
+    "teardownSavegameLocation": "C:\\Users\\yourUser\\AppData\\Local\\Teardown",
+    "teardownSavegameModname": "steam-2433702881"
+}
