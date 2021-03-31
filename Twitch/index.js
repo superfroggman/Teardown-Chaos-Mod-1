@@ -19,7 +19,7 @@ const client = new tmi.Client({
   channels: [config.channel],
 });
 
-client.connect();
+//client.connect();
 
 client.on("message", (channel, tags, message, self) => {
   console.log(message);
@@ -45,13 +45,15 @@ client.on("message", (channel, tags, message, self) => {
   updateXML();
 });
 
+updateXML();
 function updateXML() {
   fs.readFile(config.teardownSavegameLocation, function (err, data) {
-    const xmlObj = xmlParser.toJson(data, { reversible: true, object: true });
+    var xmlObj = xmlParser.toJson(data, { reversible: true, object: true });
 
-    console.log(xmlObj);
-
-    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname] = "hej";
+    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchOption1 = {value: votes[0]}
+    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchOption2 = {value: votes[1]}
+    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchOption3 = {value: votes[2]}
+    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchOption4 = {value: votes[3]}
 
     const stringifiedXmlObj = JSON.stringify(xmlObj);
     const finalXml = xmlParser.toXml(stringifiedXmlObj);
@@ -67,5 +69,6 @@ function updateXML() {
         }
       }
     );
+    
   });
 }
