@@ -22,7 +22,6 @@ const client = new tmi.Client({
 client.connect();
 
 client.on("message", (channel, tags, message, self) => {
-  console.log(message);
   // Ignore echoed messages.
   if (self) return;
 
@@ -39,6 +38,8 @@ client.on("message", (channel, tags, message, self) => {
     case "4":
       votes[3]++;
       break;
+    default:
+      return;
   }
 
   console.log(votes);
