@@ -19,7 +19,7 @@ const client = new tmi.Client({
   channels: [config.channel],
 });
 
-//client.connect();
+client.connect();
 
 client.on("message", (channel, tags, message, self) => {
   console.log(message);
@@ -69,6 +69,5 @@ function updateXML() {
         }
       }
     );
-    
   });
 }
