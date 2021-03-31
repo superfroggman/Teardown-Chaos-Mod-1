@@ -3,6 +3,8 @@ const config = require("./config.json");
 const xmlParser = require("xml2json");
 const formatXml = require("xml-formatter");
 const fs = require("fs");
+const robot = require("robotjs");
+const { keyToggle } = require("robotjs");
 
 let votes = [0, 0, 0, 0];
 
@@ -43,18 +45,25 @@ client.on("message", (channel, tags, message, self) => {
   }
 
   console.log(votes);
-  updateXML();
+  //updateXML();
+  updateKeys()
 });
 
-updateXML();
+function updateKeys(){
+  robot.keyTap("1")
+  robot.keyToggle("1", "down")
+}
+
+updateKeys()
+//updateXML();
 function updateXML() {
   fs.readFile(config.teardownSavegameLocation, function (err, data) {
     var xmlObj = xmlParser.toJson(data, { reversible: true, object: true });
 
-    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchOption1 = {value: votes[0]}
-    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchOption2 = {value: votes[1]}
-    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchOption3 = {value: votes[2]}
-    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchOption4 = {value: votes[3]}
+    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchoption1 = {value: votes[0]}
+    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchoption2 = {value: votes[1]}
+    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchoption3 = {value: votes[2]}
+    xmlObj["registry"]["savegame"]["mod"][config.teardownSavegameModname].twitchoption4 = {value: votes[3]}
 
     const stringifiedXmlObj = JSON.stringify(xmlObj);
     const finalXml = xmlParser.toXml(stringifiedXmlObj);

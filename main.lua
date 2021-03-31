@@ -5,12 +5,19 @@
 drawCallQueue = {}
 timeScale = 1 -- This one is required to keep chaos time flowing normally.
 
+local enableTwitchVoting = true
+
 local testThisEffect = "" -- Leave empty to let RNG grab effects.
 local lastEffectKey = ""
 local currentTime = 0
 local currentEffects = {}
 
 function init()
+	SetInt("savegame.mod.twitchoption1", 99)
+	SetInt("savegame.mod.twitchoption2", 99)
+	SetInt("savegame.mod.twitchoption3", 99)
+	SetInt("savegame.mod.twitchoption4", 99)
+
 	saveFileInit()
 	
 	removeDisabledEffectKeys()
@@ -39,12 +46,38 @@ function getRandomEffect()
 	return effectInstance
 end
 
-function triggerChaos()
-	table.insert(chaosEffects.activeEffects, 1, getRandomEffect())
+
+local twitchEffects = {"invincibility", "explosionAtPlayer", "nothing", "fakeDeath"}
+
+function getTwitchEffect()
+	local key = testThisEffect
+
+	if #chaosEffects.effectKeys <= 0 then
+		return deepcopy(chaosEffects.noEffectsEffect)
+	end
+	SetInt("savegame.mod.tmp", 77)
+	DebugPrint(GetInt("savegame.mod.twitchoption1"))
+
+	if key == "" then
+		--local index = math.random(1, #chaosEffects.effectKeys)
+		--key = chaosEffects.effectKeys[index]
+	end
+
+	local effectInstance = deepcopy(chaosEffects.effects[key])
 	
+	return effectInstance
+end
+
+function triggerChaos()
+	if enableTwitchVoting and true then
+		table.insert(chaosEffects.activeEffects, 1, getTwitchEffect())
+	else
+		table.insert(chaosEffects.activeEffects, 1, getRandomEffect())
+	end
+
 	local effect = chaosEffects.activeEffects[1]
 
-	effect.onEffectStart(effect)
+	--effect.onEffectStart(effect)
 end
 
 function removeChaosLogOverflow()
@@ -101,6 +134,9 @@ function GetChaosTimeStep()
 end
 
 function tick(dt)
+	if InputPressed("1") then
+		DebugPrint("jio")
+	end
 	--debugFunc()
 	
 	if(timeScale < 1) then
