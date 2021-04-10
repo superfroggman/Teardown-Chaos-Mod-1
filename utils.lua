@@ -20,6 +20,38 @@ function saveFileInit()
 		chaosEffects.disabledEffects = {}
 		SetString(moddataPrefix.. "DisabledEffects", "")
 	end
+	
+	if saveVersion < 3 then
+		saveVersion = 3
+		SetInt(moddataPrefix .. "Version", 3)
+		
+		chaosEffects.disabledEffects = DeserializeTable(GetString(moddataPrefix.. "DisabledEffects"))
+		
+		if chaosEffects.disabledEffects["fakeDeleteVehicle"] == nil then
+			chaosEffects.disabledEffects["fakeDeleteVehicle"] = "disabled"
+		end
+		
+		DebugPrint(chaosEffects.effects.fakeDeleteVehicle.name .. " is disabled by default now. Use the options to reenable.")
+		DebugPrint("Until it is fixed for multi part vehicles.")
+		SetString(moddataPrefix.. "DisabledEffects", SerializeTable(chaosEffects.disabledEffects))
+	end
+	
+	if saveVersion < 4 then
+		saveVersion = 4
+		SetInt(moddataPrefix .. "Version", 4)
+		
+		chaosEffects.disabledEffects = DeserializeTable(GetString(moddataPrefix.. "DisabledEffects"))
+		
+		if chaosEffects.disabledEffects["quakefov"] == nil then
+			chaosEffects.disabledEffects["quakefov"] = "disabled"
+		end
+		
+		if chaosEffects.disabledEffects["turtlemode"] == nil then
+			chaosEffects.disabledEffects["turtlemode"] = "disabled"
+		end
+		
+		SetString(moddataPrefix.. "DisabledEffects", SerializeTable(chaosEffects.disabledEffects))
+	end
 end
 
 function SerializeTable(a) -- Currently only works for key value string tables! (Ignores values)
@@ -63,6 +95,76 @@ function DeserializeTable(a) -- Currently only works for serialized string table
 	return deserializedTable
 end
 
+function tableToText(inputTable, loopThroughTables)
+	loopThroughTables = loopThroughTables or true
+
+	local returnString = "{ "
+	for key, value in pairs(inputTable) do
+		if type(value) == "string" or type(value) == "number" then
+			returnString = returnString .. key .." = " .. value .. ", "
+		elseif type(value) == "table" and loopThroughTables then
+			returnString = returnString .. key .. " = " .. tableToText(value) .. ", "
+		else
+			returnString = returnString .. key .. " = " .. type(value) .. ", "
+		end
+	end
+	returnString = returnString .. "}"
+	
+	return returnString
+end
+
+function GetEffectCount()
+	local effectCount = 0
+
+	for key, value in pairs(chaosEffects.effects) do
+		effectCount = effectCount + 1
+	end
+	
+	return effectCount
+end
+
+function SortEffectsTable(effectCount)
+	effectCount = effectCount or GetEffectCount()
+	
+	local tableOut = {}
+	
+	for uid, effect in pairs(chaosEffects.effects) do
+		local i = 1
+		
+		local loop = true
+		while loop do
+			if i > #tableOut then
+				tableOut[i] = {uid, effect.name}
+				loop = false
+				break
+			end
+			
+			if effect.name < tableOut[i][2] then
+				table.insert(tableOut, i, {uid, effect.name})
+				loop = false
+				break
+			end
+			
+			if i >= #tableOut + 1 or i >= effectCount + 1 then -- Should never occur, just an infinite loop safe guard.
+				loop = false
+				break
+			end
+			
+			i = i + 1
+		end
+	end
+	
+	for key, value in ipairs(tableOut) do
+		tableOut[key] = value[1]
+	end
+	
+	return tableOut
+end
+
+function roundToTwoDecimals(a) --TODO: Make a better, generic version with more decimal points.
+	return math.floor(a * 100)/100
+end
+
 function rndVec(length)
 	local v = VecNormalize(Vec(math.random(-100,100), math.random(-100,100), math.random(-100,100)))
 	return VecScale(v, length)	
@@ -70,6 +172,18 @@ end
 
 function dirVec(a, b)
 	return VecNormalize(VecSub(b, a))
+end
+
+function VecDist(a, b)
+	local directionVector = VecSub(b, a)
+	
+	local distance = math.sqrt(directionVector[1]^2 +  directionVector[2]^2 +  directionVector[3]^2)
+	
+	return distance
+end
+
+function VecToString(vec)
+	return vec[1] .. ", " .. vec[2] .. ", " .. vec[3]
 end
 
 function raycast(origin, direction, maxDistance, radius, rejectTransparant)

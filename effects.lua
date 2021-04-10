@@ -1,21 +1,62 @@
 #include "utils.lua"
 
 function chaosSFXInit()
+	local loadedSFX = {loops = {}, regular = {}}
+	
 	for key, value in ipairs(chaosEffects.effectKeys) do
 		local currentEffect = chaosEffects.effects[value]
 		
 		if #currentEffect.effectSFX > 0 then
 			for i=1, #currentEffect.effectSFX do
-				local isLoop = currentEffect.effectSFX[i]["isLoop"]
+				local soundData =  currentEffect.effectSFX[i]
+				local soundPath = soundData["soundPath"]
+				local isLoop = soundData["isLoop"]
 				local handle = nil
 				
+				local handle = 0
+				
 				if isLoop then
-					handle = LoadLoop(currentEffect.effectSFX[i]["soundPath"])
+					if loadedSFX.loops[soundPath] ~= nil then
+						handle = loadedSFX.loops[soundPath]
+					else
+						handle = LoadLoop(soundPath)
+						loadedSFX.loops[soundPath] = handle
+					end
 				else
-					handle = LoadSound(currentEffect.effectSFX[i]["soundPath"])
+					if loadedSFX.regular[soundPath] ~= nil then
+						handle = loadedSFX.regular[soundPath]
+					else
+						handle = LoadSound(soundPath)
+						loadedSFX.regular[soundPath] = handle
+					end
 				end
 				
 				currentEffect.effectSFX[i] = handle
+			end
+		end
+	end
+end
+
+function chaosSpritesInit()
+	local loadedSprites = {}
+
+	for key, value in ipairs(chaosEffects.effectKeys) do
+		local currentEffect = chaosEffects.effects[value]
+		
+		if #currentEffect.effectSprites > 0 then
+			for i=1, #currentEffect.effectSprites do
+				local currentSpriteData = currentEffect.effectSprites[i]
+				
+				local handle = 0
+				
+				if loadedSprites[currentSpriteData] ~= nil then
+					handle = loadedSprites[currentSpriteData]
+				else
+					handle = LoadSprite(currentSpriteData)
+					loadedSprites[currentSpriteData] = handle
+				end
+				
+				currentEffect.effectSprites[i] = handle
 			end
 		end
 	end
@@ -32,6 +73,11 @@ function chaosKeysInit()
 	end
 
 	table.remove(chaosEffects.activeEffects, 1)
+end
+
+function loadChaosEffectData()
+	chaosSFXInit()
+	chaosSpritesInit()
 end
 
 function removeDisabledEffectKeys()
@@ -54,7 +100,7 @@ chaosEffects = {
 	
 	disabledEffects = {},
 	
-	debugPrintOrder = {"name", "effectDuration", "effectLifetime", "effectSFX", "effectVariables", "onEffectStart", "onEffectTick", "onEffectEnd"},
+	debugPrintOrder = {"name", "effectDuration", "effectLifetime", "effectSFX", "effectSprites", "effectVariables", "onEffectStart", "onEffectTick", "onEffectEnd"},
 	
 	effectTemplate = {
 		name = "Name", -- This is what shows up on the UI.
@@ -62,6 +108,7 @@ chaosEffects = {
 		effectLifetime = 0, -- Keep this at 0, this is how long the effect has been running for.
 		hideTimer = false, -- For effects that trick the player.
 		effectSFX = {}, -- Locations of SFX. Will be replaced by their handle during setup.
+		effectSprites = {}, -- Locations of sprites. Will be replaced by their handle during setup.
 		effectVariables = {}, -- Any variables the effect has access to.
 							  -- The reason you want your variables in here rather than its parent Table is readability.
 							  -- The effect does get full access to itself so you can edit every variable in it.
@@ -76,6 +123,7 @@ chaosEffects = {
 		effectLifetime = 0,
 		hideTimer = false,
 		effectSFX = {},
+		effectSprites = {},
 		effectVariables = {},
 		onEffectStart = function(vars) end,
 		onEffectTick = function(vars) end,
@@ -91,6 +139,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = true,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				SetPlayerHealth(0)
@@ -109,6 +158,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				local currentVehicleHandle = GetPlayerVehicle()
@@ -130,6 +180,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -150,6 +201,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				local velocity = rndVec(20)
@@ -176,6 +228,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				Explosion(GetPlayerPos(), 7.5)
@@ -191,6 +244,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -207,6 +261,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				local vehicle = GetPlayerVehicle()
@@ -224,6 +279,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) 
@@ -240,6 +296,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -255,6 +312,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -269,6 +327,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) 
@@ -283,6 +342,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -297,6 +357,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -314,6 +375,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				SetPaused(true)
@@ -328,6 +390,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) 
@@ -342,6 +405,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				SetPlayerVehicle(0)
@@ -358,6 +422,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) 
@@ -374,6 +439,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {fadeAlpha = 0, waking = false},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -411,6 +477,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = { maxShells = 50, shellNum = 1, defaultShell = { active = false, explode = false, velocity = 500 }, shells = {},},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -489,6 +556,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -513,6 +581,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars)
 				local playerTransform = GetPlayerTransform()
@@ -547,6 +616,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				local cameraTransform = GetCameraTransform()
@@ -583,6 +653,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {currentBorderPos = 0},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -614,11 +685,12 @@ chaosEffects = {
 		},
 		
 		explodingStare = {
-			name = "Explosion Stare",
+			name = "Explosive Stare",
 			effectDuration = 0,
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {currentBorderPos = 0},
 			onEffectStart = function(vars) 
 				local cameraTransform = GetCameraTransform()
@@ -641,6 +713,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
@@ -660,6 +733,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars)
 				local nearbyShapes = QueryAabbShapes(Vec(-100, -100, -100), Vec(100, 100, 100))
@@ -689,6 +763,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {currentBorderPos = 0},
 			onEffectStart = function(vars) 
 				local playerTransform = GetPlayerTransform()
@@ -722,6 +797,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {transform = Transform(Vec(0,0,0), QuatEuler(0,0,0)), currentVehicle = 0, velocity = Vec(0,0,0)},
 			onEffectStart = function(vars) 
 				vars.effectVariables.transform = GetPlayerTransform()
@@ -754,6 +830,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				local nearbyShapes = QueryAabbShapes(Vec(-100, -100, -100), Vec(100, 100, 100))
@@ -794,6 +871,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				SetPlayerVehicle(0)
@@ -808,6 +886,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) 
@@ -824,6 +903,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) end,
@@ -836,6 +916,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = true,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = { deathTimer = 5, nameBackup = "" },
 			onEffectStart = function(vars)
 				if GetPlayerVehicle() ~= 0 then
@@ -880,6 +961,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = true,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = { revealTimer = 3, nameBackup = "", transform = 0 },
 			onEffectStart = function(vars)
 				SetPlayerVehicle(0)
@@ -910,6 +992,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) 
@@ -934,6 +1017,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				if GetPlayerVehicle() ~= 0 then
@@ -952,6 +1036,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {{isLoop = false, soundPath = "MOD/sfx/knock.ogg"}},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				PlaySound(vars.effectSFX[1])
@@ -966,6 +1051,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				MakeHole(GetPlayerTransform().pos, 5, 5, 5)
@@ -980,6 +1066,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = { tools = {"sledge", "spraycan", "extinguisher", "blowtorch", "shotgun", "plank", "pipebomb", "gun", "bomb", "rocket"} },
 			onEffectStart = function(vars)
 				for i = 1, #vars.effectVariables.tools do
@@ -1000,6 +1087,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)				
@@ -1026,6 +1114,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = { x = 0, y = 0, px = true, py = true},
 			onEffectStart = function(vars) 
 				vars.effectVariables.x = UiCenter()
@@ -1093,11 +1182,12 @@ chaosEffects = {
 			onEffectEnd = function(vars) end,
 		},
 		
-		--[[quakefov = { -- Disables tool functionality, unsure how to fix yet.
+		quakefov = { -- Disables tool functionality, unsure how to fix yet.
 			name = "Quake FOV",
 			effectDuration = 20,
 			effectLifetime = 0,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) 
@@ -1105,10 +1195,28 @@ chaosEffects = {
 				local playerCameraPos = playerCamera.pos
 		
 				SetCameraTransform(Transform(playerCamera.pos, playerCamera.rot), 150)
-				SetBool("game.player.canusetool", true)
 			end,
 			onEffectEnd = function(vars) end,
-		},]]--
+		},
+		
+		turtlemode = {
+			name = "Turtle Mode",
+			effectDuration = 20,
+			effectLifetime = 0,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = {},
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars) 
+				local playerCamera = GetPlayerCameraTransform()
+				local playerCameraPos = playerCamera.pos
+				
+				local playerCameraRot = QuatRotateQuat(playerCamera.rot, QuatEuler(0, 0, -180))
+		
+				SetCameraTransform(Transform(playerCamera.pos, playerCameraRot))
+			end,
+			onEffectEnd = function(vars) end,
+		},
 		
 		networkLag = {
 			name = "Lag",
@@ -1116,6 +1224,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {lastPlayerPos = nil, lastPlayerRot = nil, lastPlayerVel = nil, lastPlayerVehicle = 0, lastPlayerVehiclePos = nil, lastPlayerVehicleRot = nil, lastPlayerVehicleVel = nil,},
 			onEffectStart = function(vars)
 				local playerTransform = GetPlayerTransform()
@@ -1176,6 +1285,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars) 
 				local playerVehicle = GetPlayerVehicle()
@@ -1215,6 +1325,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {lastFrameTool = "", lastFrameAmmo = ""},
 			onEffectStart = function(vars) 
 				vars.effectVariables.lastFrameTool = GetString("game.player.tool")
@@ -1241,7 +1352,8 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
-			effectVariables = { hitPoint = Vec(0,0,0)},
+			effectSprites = {},
+			effectVariables = { playerVehicleLastFrame = 0 },
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
 				local playerCameraPos = nil
@@ -1250,14 +1362,15 @@ chaosEffects = {
 				
 				local playerPos = playerTransform.pos
 				
-				local rayOrigin = VecAdd(playerPos, Vec(0, 1, 0))
-				local rayDir = TransformToParentVec(playerTransform, {0, 1, 0})
+				-- Camera movement
 				
-				local hit, hitPoint = raycast(rayOrigin, rayDir, 100)
+				local cameraRayOrigin = VecAdd(playerPos, Vec(0, 1, 0))
+				local cameraRayDir = TransformToParentVec(playerTransform, {0, 1, 0})
 				
-				if hit then
-					playerCameraPos = hitPoint
-					vars.effectVariables.hitPoint = hitPoint
+				local cameraHit, cameraHitPoint = raycast(cameraRayOrigin, cameraRayDir, 30)
+				
+				if cameraHit then
+					playerCameraPos = VecAdd(cameraHitPoint, Vec(0, -2, 0))
 				else
 					playerCameraPos = VecAdd(GetPlayerCameraTransform().pos, Vec(0, 30, 0))
 				end
@@ -1266,7 +1379,119 @@ chaosEffects = {
 					SpawnParticle("smoke", playerPos, Vec(0, 0, 0),  0.5, 0.5)
 				end
 				
-				SetCameraTransform(Transform(playerCameraPos, QuatEuler(-90, -90, 0)))
+				local distanceBetweenCamera = VecDist(playerPos, playerCameraPos)
+				
+				local fov = 120 / 30 * (120 - distanceBetweenCamera)
+				
+				if not cameraHit or distanceBetweenCamera < 6 then
+					fov = 90
+				end
+				
+				SetCameraTransform(Transform(playerCameraPos, QuatEuler(-90, -90, 0)), fov)
+				-- End camera movement
+				
+				--####################
+				
+				-- Player movement
+				
+				local walkingSpeed = 7
+				
+				local currentPlayerVelocity = GetPlayerVelocity()
+				
+				local forwardMovement = 0
+				
+				local rightMovement = 0
+				
+				local upwardsMovement = 0
+				
+				if InputDown("w") then
+					forwardMovement = forwardMovement + walkingSpeed
+				end
+				
+				if InputDown("s") then
+					forwardMovement = forwardMovement - walkingSpeed
+				end
+				
+				if InputDown("a") then
+					rightMovement = rightMovement - walkingSpeed
+				end
+				
+				if InputDown("d") then
+					rightMovement = rightMovement + walkingSpeed
+				end
+				
+				SetPlayerVelocity(Vec(forwardMovement,  currentPlayerVelocity[2], rightMovement))
+				
+				-- End Player movement
+				
+				--####################
+				
+				-- Enter Vehicle
+				
+				if GetPlayerVehicle() == 0 and vars.effectVariables.playerVehicleLastFrame ~= 0 then
+					vars.effectVariables.playerVehicleLastFrame = 0
+					return
+				end
+				
+				local range = 2
+				
+				local minPos = VecAdd(playerPos, Vec(-range, -range, -range))
+				local maxPos = VecAdd(playerPos, Vec(range, range, range))
+				local bodyList = QueryAabbBodies(minPos, maxPos)
+				
+				local vehicleList = {}
+				
+				for i=1, #bodyList do
+					local currBody = bodyList[i]
+					
+					local vehicle = GetBodyVehicle(currBody) 
+					
+					if vehicle ~= 0 then
+						table.insert(vehicleList, vehicle)
+					end
+				end
+				
+				function getDistToVehicle(vehicle)
+					local vehicleTransform = GetVehicleTransform(vehicle)
+					local vehiclePos = vehicleTransform.pos
+					
+					local distance = VecDist(playerPos, vehiclePos)
+					
+					return distance
+				end
+				
+				if #vehicleList <= 0 then
+					return
+				end
+				
+				local closestVehicleDist = getDistToVehicle(vehicleList[1])
+				local closetVehicleIndex = vehicleList[1]
+				
+				if #vehicleList > 1 then
+					for i=2, #vehicleList do
+						local currentVehicle = vehicleList[i]
+						local currDist = getDistToVehicle(currentVehicle)
+						
+						if currDist < closestVehicleDist then
+							closestVehicleDist = currDist
+							closetVehicleIndex = currentVehicle
+						end
+					end
+				end
+				
+				if GetPlayerVehicle() == 0 then
+					DrawBodyOutline(GetVehicleBody(closetVehicleIndex), 1, 1, 1, 0.75)
+				end
+				
+				if InputPressed("e") then
+					SetPlayerVehicle(closetVehicleIndex)
+				end
+				
+				vars.effectVariables.playerVehicleLastFrame = GetPlayerVehicle()
+				
+				-- End Enter Vehicle
+				
+				-- TODO: Render enter vehicle on top of closest vehicle.
 			end,
 			onEffectEnd = function(vars) end,
 		},
@@ -1277,6 +1502,7 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = {},
 			onEffectStart = function(vars)
 				local cameraTransform = GetCameraTransform()
@@ -1307,14 +1533,19 @@ chaosEffects = {
 			effectLifetime = 0,
 			hideTimer = true,
 			effectSFX = {},
+			effectSprites = {},
 			effectVariables = { revealTimer = 5, nameBackup = "", transform = 0, vehicle = 0 },
 			onEffectStart = function(vars)
 				local vehicle = GetPlayerVehicle()
 				if vehicle ~= 0 then
 					local vehicleBody = GetVehicleBody(vehicle)
+					local bodyTransform = GetBodyTransform(vehicleBody)
+					
 					vars.effectVariables.vehicle = vehicle
-					vars.effectVariables.transform = GetBodyTransform(GetVehicleBody(vehicle))
+					vars.effectVariables.transform = TransformCopy(bodyTransform)
+					
 					SetPlayerVehicle(0)
+					
 					SetBodyTransform(vehicleBody, Transform(Vec(0, 10000, 0), GetBodyTransform(GetVehicleBody(vehicle)).rot))--Just get the vehicle out of there
 				end
 				
@@ -1346,6 +1577,445 @@ chaosEffects = {
 						end
 					end
 				end
+			end,
+			onEffectEnd = function(vars) end,
+		},
+	
+		lowgravity = {
+			name = "Low Gravity",
+			effectDuration = 15,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = {},
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars)
+				local playerPos = GetPlayerPos()
+				local range = 50
+
+				local tempVec = GetPlayerVelocity()
+				tempVec[2] = 0.5
+				SetPlayerVelocity(tempVec)
+				
+				local minPos = VecAdd(playerPos, Vec(-range, -range, -range))
+				local maxPos = VecAdd(playerPos, Vec(range, range, range))
+				local shapeList = QueryAabbShapes(minPos, maxPos)
+				
+				for key, value in ipairs(shapeList) do
+					local shapeBody = GetShapeBody(value)
+				
+					--[[ Always returns false, even on dynamic bodies?
+					if not IsBodyDynamic(shapeBody) then
+						return
+					end]]--
+
+					local shapeTransform = GetBodyTransform(shape)
+
+					local bodyVelocity = GetBodyVelocity(shapeBody)
+					
+					bodyVelocity[2] = 0.5
+					
+					SetBodyVelocity(shapeBody, bodyVelocity)
+				end
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		explosivePunch = {
+			name = "Explosive Punch",
+			effectDuration = 17.5,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = {},
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars)
+				local cameraTransform = GetCameraTransform()
+				local rayDirection = TransformToParentVec(cameraTransform, {0, 0, -1})
+ 
+				local hit, hitPoint, distance = raycast(cameraTransform.pos, rayDirection, 3)
+				
+				if hit == false then
+					return
+				end
+ 
+				if InputDown("lmb") then
+					Explosion(hitPoint, 0.5)
+					SetPlayerHealth(1)
+				end
+ 
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		--[[suddenFlood = {
+			name = "Flood",
+			effectDuration = 10,--20,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {"MOD/sprites/square.png"},
+			effectVariables = { waterHeight = -1 },
+			onEffectStart = function(vars) 
+				vars.effectVariables.waterHeight = math.random(12, 15)
+			end,
+			onEffectTick = function(vars)
+				local playerPos = GetPlayerPos()
+				local playerCamera = GetPlayerCameraTransform()
+				local floatHeightDiff = 0.25
+				
+				local waterPos = VecCopy(playerPos)
+				
+				waterPos[2] = vars.effectVariables.waterHeight
+				
+				local rotation = QuatEuler(90, 0, 0)
+				
+				DrawSprite(vars.effectSprites[1], Transform(waterPos, rotation), 500, 500, 0, 0, 1, 0.25, true, true)
+				
+				-- Object Behaviour
+				
+				local range = 50
+				
+				local minPos = VecAdd(playerPos, Vec(-range, -math.abs(vars.effectVariables.waterHeight - range), -range))
+				local maxPos = VecAdd(playerPos, Vec(range, math.abs(playerPos[2] - vars.effectVariables.waterHeight) - floatHeightDiff, range))
+				
+				--DebugPrint(VecToString(minPos) .. " || " .. VecToString(maxPos))
+				
+				local shapeList = QueryAabbShapes(minPos, maxPos)
+				
+				for key, value in ipairs(shapeList) do
+					local shapeBody = GetShapeBody(value)
+				
+					--[ Always returns false, even on dynamic bodies?
+					if not IsBodyDynamic(shapeBody) then
+						return
+					end]--
+
+					local shapeTransform = GetBodyTransform(shape)
+
+					local bodyVelocity = GetBodyVelocity(shapeBody)
+					
+					--local bodyMass = GetBodyMass(shapeBody)
+					
+					--DebugPrint(bodyMass)
+					
+					bodyVelocity[2] = 0.1 * math.abs(shapeTransform.pos[2] - (vars.effectVariables.waterHeight - floatHeightDiff))--5 / 20000 * bodyMass
+					
+					SetBodyVelocity(shapeBody, bodyVelocity)
+				end
+				
+				-- End Object Behaviour
+				
+				--####################
+				
+				-- Player Behaviour
+				
+				if playerPos[2] < vars.effectVariables.waterHeight - floatHeightDiff then
+					local playerVelocity = GetPlayerVelocity()
+					
+					if InputDown("ctrl") then
+						playerVelocity[2] = -3
+					elseif InputDown("space") then
+						playerVelocity[2] = 3
+					else
+						playerVelocity[2] = 2
+					end
+					
+					
+					SetPlayerVelocity(playerVelocity)
+				end
+				
+				if playerCamera.pos[2] < vars.effectVariables.waterHeight then
+					table.insert(drawCallQueue, function() 
+						UiPush()
+							UiAlign("top left")
+							UiColor(0.25, 0.25, 1, 0.5)
+							UiRect(UiWidth() + 20, UiHeight() + 20)
+							UiBlur(0.25)
+						UiPop()
+					end)
+				end
+				
+				-- End Player Behaviour
+			end,
+			onEffectEnd = function(vars) end,
+		},]]--
+		
+		dontStopDriving = {
+			name = "Speed",
+			effectDuration = 20,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = { fuseTimer = 10 },
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars)
+				local vehicle = GetPlayerVehicle()
+				
+				if vehicle == 0 then
+					return
+				end
+				
+				local vehicleBody = GetVehicleBody(vehicle)
+				local vehicleTransform = GetVehicleTransform(vehicle)
+				
+				local vel = TransformToLocalVec(vehicleTransform, GetBodyVelocity(vehicleBody))
+				
+				local speed = -vel[3]
+				--Speed is in meter per second, convert to km/h
+				speed = speed * 3.6
+				
+				speed = math.abs(math.floor(speed))
+				
+				table.insert(drawCallQueue, function()
+					UiPush()
+						UiFont("regular.ttf", 52)
+						UiTextShadow(0, 0, 0, 0.5, 2.0)
+						
+						UiAlign("center middle")
+						
+						UiTranslate(UiCenter(), UiHeight() * 0.2)
+						
+						UiText("Keep above 30 km/u or the bomb explodes!")
+						
+						UiTranslate(0, 40)
+						
+						UiFont("regular.ttf", 26)
+						
+						local fuseStatus = " "
+						
+						if speed < 30 then
+							fuseStatus = "TICKING"
+							vars.effectVariables.fuseTimer = vars.effectVariables.fuseTimer - GetChaosTimeStep()
+						elseif vars.effectVariables.fuseTimer < 10 then
+							vars.effectVariables.fuseTimer = vars.effectVariables.fuseTimer + GetChaosTimeStep()
+							fuseStatus = "RECOVERING"
+						elseif vars.effectVariables.fuseTimer > 10 then
+							 vars.effectVariables.fuseTimer = 10
+						end
+						
+						if vars.effectVariables.fuseTimer <= 0 then
+							Explosion(GetPlayerPos(), 4)
+							vars.effectDuration = 0
+						end
+						
+						UiText("Fuse: " .. math.floor(vars.effectVariables.fuseTimer) .. " " .. fuseStatus)
+						
+						UiTranslate(0, 25)
+						
+						UiText("Current speed: " .. speed .. " km\h")
+					UiPop()
+				end)
+				
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		teleportGun = {
+			name = "Teleport Gun",
+			effectDuration = 20,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = {},
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars)
+				if InputPressed("lmb") then
+					local cameraTransform = GetCameraTransform()
+					local rayDirection = TransformToParentVec(cameraTransform, Vec(0, 0, -1))
+	 
+					local hit, hitPoint, distance, normal = raycast(cameraTransform.pos, rayDirection, 100)
+					
+					if hit == false then
+						return
+					end
+					
+					local newPos = VecAdd(hitPoint, VecScale(normal, 1.5))
+					
+					local playerTransform = GetPlayerTransform()
+					
+					SetPlayerTransform(Transform(newPos, playerTransform.rot))
+				end
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		foggyDay = {
+			name = "Foggy Day",
+			effectDuration = 30,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {"MOD/sprites/square.png"},
+			effectVariables = {},
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars)
+				local cameraTransform = GetCameraTransform()
+				local forwardDirection = TransformToParentVec(cameraTransform, Vec(0, 0, -1))
+				
+				local fogStep = 0.5
+				local fogLayers = 100
+				local fogStart = 100
+				
+				for i = 1, fogLayers do
+					local spritePos = VecAdd(cameraTransform.pos, VecScale(forwardDirection, fogStart - i * fogStep))
+					local spriteRot = QuatLookAt(spritePos, cameraTransform.pos)
+					
+					DrawSprite(vars.effectSprites[1], Transform(spritePos, spriteRot), 200, 200, 0.25, 0.25, 0.25, 0.5, true, true)
+				end
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		honkingVehicles = {
+			name = "Honk Honk",
+			effectDuration = 20,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {{isLoop = false, soundPath = "MOD/sfx/carhonks/honk01.ogg"}, 
+						 {isLoop = false, soundPath = "MOD/sfx/carhonks/honk02.ogg"}, 
+						 {isLoop = false, soundPath = "MOD/sfx/carhonks/honk03.ogg"}, 
+						 {isLoop = false, soundPath = "MOD/sfx/carhonks/honk04.ogg"}, 
+						 {isLoop = false, soundPath = "MOD/sfx/carhonks/honk05.ogg"}, },
+			effectSprites = {},
+			effectVariables = {vehicles = {}},
+			onEffectStart = function(vars)
+				local range = 500
+				local minPos = Vec(-range, -range, -range)
+				local maxPos = Vec(range, range, range)
+				local nearbyShapes = QueryAabbShapes(minPos, maxPos)
+
+				for i = 1, #nearbyShapes do
+					local currentShape = nearbyShapes[i]
+					local shapeBody = GetShapeBody(currentShape)
+					
+					if GetBodyVehicle(shapeBody) ~= 0 then
+						local vehicleHandle = GetBodyVehicle(shapeBody)
+						
+						vars.effectVariables.vehicles[#vars.effectVariables.vehicles + 1] = {handle = vehicleHandle, honkTimer = 0}
+					end
+				end
+			end,
+			onEffectTick = function(vars)
+				for index, vehicleData in ipairs(vars.effectVariables.vehicles) do
+					if math.random(1, 10) > 6 and vehicleData.honkTimer <= 0 then
+						vehicleData.honkTimer = math.random(3, 5)
+						
+						local vehicleTransform = GetVehicleTransform(vehicleData.handle)
+						
+						local sfxIndex = math.random(1, #vars.effectSFX)
+						
+						PlaySound(vars.effectSFX[sfxIndex], vehicleTransform.pos,  1)
+					else
+						vehicleData.honkTimer = vehicleData.honkTimer - GetChaosTimeStep()
+					end
+				end
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		superWalkJump = {
+			name = "Super Jump & Super Walkspeed",
+			effectDuration = 20,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = { jumpNextFrame = false },
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars) 
+				local playerVel = VecCopy(GetPlayerVelocity())
+				
+				playerVel[1] = 0
+				playerVel[3] = 0
+				
+				local isTouchingGround = playerVel[2] >= -0.00001 and playerVel[2] <= 0.00001
+				
+				if vars.effectVariables.jumpNextFrame then
+					vars.effectVariables.jumpNextFrame = false
+					
+					playerVel[2] = 15
+					
+					SetPlayerVelocity(playerVel)
+				end
+				
+				if InputPressed("space") and isTouchingGround then
+					vars.effectVariables.jumpNextFrame = true
+				end
+				
+				local forwardMovement = 0
+				local rightMovement = 0
+				
+				if InputDown("up") then
+					forwardMovement = forwardMovement + 1
+				end
+				
+				if InputDown("down") then
+					forwardMovement = forwardMovement - 1
+				end
+				
+				if InputDown("left") then
+					rightMovement = rightMovement - 1
+				end
+				
+				if InputDown("right") then
+					rightMovement = rightMovement + 1
+				end
+				
+				forwardMovement = forwardMovement * 25
+				rightMovement = rightMovement * 25
+				
+				local playerTransform = GetPlayerTransform()
+				
+				local forwardInWorldSpace = TransformToParentVec(GetPlayerTransform(), Vec(0, 0, -1))
+				local rightInWorldSpace = TransformToParentVec(GetPlayerTransform(), Vec(1, 0, 0))
+				
+				local forwardDirectionStrength = VecScale(forwardInWorldSpace, forwardMovement)
+				local rightDirectionStrength = VecScale(rightInWorldSpace, rightMovement)
+				
+				playerVel = VecAdd(VecAdd(playerVel, forwardDirectionStrength), rightDirectionStrength)
+				
+				playerVel = playerVel
+				
+				SetPlayerVelocity(playerVel)
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		tripleJump = {
+			name = "Triple Jump",
+			effectDuration = 20,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = { jumpNextFrame = false, jumpsLeft = 0, maxExtraJumps = 2 },
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars) 
+				local playerVel = GetPlayerVelocity()
+				
+				local isTouchingGround = playerVel[2] >= -0.00001 and playerVel[2] <= 0.00001
+				
+				if vars.effectVariables.jumpNextFrame then
+					vars.effectVariables.jumpNextFrame = false
+					
+					playerVel[2] = 4
+				end
+				
+				if InputPressed("space") and vars.effectVariables.jumpsLeft > 0 then
+					vars.effectVariables.jumpsLeft = vars.effectVariables.jumpsLeft - 1
+					vars.effectVariables.jumpNextFrame = true
+				end
+				
+				if isTouchingGround and vars.effectVariables.jumpsLeft < vars.effectVariables.maxExtraJumps then
+					vars.effectVariables.jumpsLeft = vars.effectVariables.maxExtraJumps
+				end
+				
+				SetPlayerVelocity(playerVel)
 			end,
 			onEffectEnd = function(vars) end,
 		},
