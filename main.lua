@@ -10,6 +10,7 @@ lastEffectKey = ""
 currentTime = 0
 timerPaused = false
 chaosPaused = false
+hasTheGameReloaded = false
 
 function init()
 	saveFileInit()
@@ -19,6 +20,10 @@ function init()
 	loadChaosEffectData()
 	
 	debugInit()
+end
+
+function gameReloaded()
+	return chaosEffects.effectTemplate.onEffectStart == nil
 end
 
 function getCopyOfEffect(key)
@@ -76,10 +81,11 @@ function chaosEffectTimersTick(dt)
 	for key, value in ipairs(chaosEffects.activeEffects) do
 		if value.effectDuration > 0 then
 			value.effectLifetime = value.effectLifetime + dt
-			value.onEffectTick(value)
-			if value.effectLifetime > value.effectDuration then
+			if value.effectLifetime >= value.effectDuration then
 				value.onEffectEnd(value)
 				table.remove(chaosEffects.activeEffects, key)
+			else
+				value.onEffectTick(value)
 			end
 		end
 	end
@@ -94,6 +100,26 @@ function GetChaosTimeStep()
 end
 
 function tick(dt)
+	if not hasTheGameReloaded and gameReloaded() then
+		chaosEffects.activeEffects = {}
+		
+		local warningEffect = getCopyOfEffect("nothing")
+		warningEffect.name = "Currently the Chaos mod\ndoes not support quick loading.\nThe mod is disabled until restarting\nthe level."
+		
+		warningEffect.onEffectStart = function() end
+		warningEffect.onEffectTick = function() end
+		warningEffect.onEffectEnd = function() end
+		
+		triggerEffect(warningEffect)
+		
+		hasTheGameReloaded = true
+		currentTime = chaosTimer
+	end
+	
+	if hasTheGameReloaded then
+		return
+	end
+
 	debugTick()
 	
 	if not timerPaused then
@@ -133,7 +159,11 @@ function drawTimer()
 	UiPop()
 
 	UiPush()
-		UiColor(0.25, 0.25, 1)
+		if hasTheGameReloaded then
+			UiColor(1, 0.25, 0.25)
+		else
+			UiColor(0.25, 0.25, 1)
+		end
 		UiTranslate(UiCenter() * currentTimePercenage, 0)
 		UiRect(UiWidth() * currentTimePercenage, UiHeight() * 0.05)
 	UiPop()
@@ -177,7 +207,6 @@ UiPush()
 	end
 	
 UiPop()
-
 end
 
 function processDrawCallQueue()
@@ -189,10 +218,18 @@ function processDrawCallQueue()
 end
 
 function draw()	
-	processDrawCallQueue()
-	
-	drawTimer()
-	drawEffectLog()
-	
-	debugDraw()
+	UiPush()
+		if hasTheGameReloaded then
+			drawTimer()
+			drawEffectLog()
+			return
+		end
+		
+		processDrawCallQueue()
+		
+		drawTimer()
+		drawEffectLog()
+		
+		debugDraw()
+	UiPop()
 end

@@ -176,7 +176,7 @@ chaosEffects = {
 		
 		jetpack = {
 			name = "Jetpack",
-			effectDuration = 15,
+			effectDuration = 25,
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
@@ -361,9 +361,13 @@ chaosEffects = {
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
-				for i = 1, 5 do
+				ParticleReset()
+				ParticleType("smoke")
+				ParticleColor(0.7, 0.6, 0.5)
+				ParticleRadius(1)
+				for i = 1, 20 do
 					local direction = rndVec(10)
-					SpawnParticle("smoke", GetPlayerPos(), direction, 5, 2)
+					SpawnParticle(GetPlayerPos(), direction, 2)
 				end
 			end,
 			onEffectEnd = function(vars) end,
@@ -917,12 +921,13 @@ chaosEffects = {
 			hideTimer = true,
 			effectSFX = {},
 			effectSprites = {},
-			effectVariables = { deathTimer = 5, nameBackup = "" },
+			effectVariables = { deathTimer = 5, nameBackup = "", playerTransform = nil},
 			onEffectStart = function(vars)
 				if GetPlayerVehicle() ~= 0 then
 					SetPlayerVehicle(0)
 				end
 				
+				vars.effectVariables.playerTransform = GetPlayerTransform()
 				vars.effectVariables.nameBackup = vars.name -- In case I decide on a new name
 				vars.name = chaosEffects.effects["instantDeath"].name
 			end,
@@ -932,13 +937,15 @@ chaosEffects = {
 					vars.effectDuration = 0
 					vars.effectLifetime = 0
 				else
-				
 					SetPlayerHealth(1)
 					
 					local playerCamera = GetPlayerCameraTransform()
 					local playerCameraPos = playerCamera.pos
 				
 					SetCameraTransform(Transform(VecAdd(playerCameraPos, Vec(0, -1, 0)), QuatEuler(-5, 0, 45)))
+					
+					SetPlayerTransform(vars.effectVariables.playerTransform)
+					
 					table.insert(drawCallQueue, function()
 					UiPush()
 						local currFade = 100 / 5 * vars.effectLifetime / 100
@@ -1116,16 +1123,14 @@ chaosEffects = {
 			effectSFX = {},
 			effectSprites = {},
 			effectVariables = { x = 0, y = 0, px = true, py = true},
-			onEffectStart = function(vars) 
+			onEffectStart = function(vars)
 				vars.effectVariables.x = UiCenter()
 				vars.effectVariables.y = UiMiddle()
 			end,
 			onEffectTick = function(vars)
-
 				local speed = 5
-				local middleSize = UiHeight()/5
+				local middleSize = UiHeight() / 5
 				
-
 				if vars.effectVariables.px then
 					vars.effectVariables.x = vars.effectVariables.x + speed
 				else
@@ -1191,10 +1196,7 @@ chaosEffects = {
 			effectVariables = {},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars) 
-				local playerCamera = GetPlayerCameraTransform()
-				local playerCameraPos = playerCamera.pos
-		
-				SetCameraTransform(Transform(playerCamera.pos, playerCamera.rot), 150)
+				SetCameraFov(140)
 			end,
 			onEffectEnd = function(vars) end,
 		},
@@ -1537,6 +1539,7 @@ chaosEffects = {
 			effectVariables = { revealTimer = 5, nameBackup = "", transform = 0, vehicle = 0 },
 			onEffectStart = function(vars)
 				local vehicle = GetPlayerVehicle()
+				
 				if vehicle ~= 0 then
 					local vehicleBody = GetVehicleBody(vehicle)
 					local bodyTransform = GetBodyTransform(vehicleBody)
@@ -1544,28 +1547,35 @@ chaosEffects = {
 					vars.effectVariables.vehicle = vehicle
 					vars.effectVariables.transform = TransformCopy(bodyTransform)
 					
+					bodyTransform.pos = VecAdd(bodyTransform.pos, Vec(0, 10000, 0))
+					
 					SetPlayerVehicle(0)
 					
-					SetBodyTransform(vehicleBody, Transform(Vec(0, 10000, 0), GetBodyTransform(GetVehicleBody(vehicle)).rot))--Just get the vehicle out of there
+					SetBodyTransform(vehicleBody, bodyTransform) -- Just get the vehicle out of there
+					SetBodyVelocity(vehicleBody, Vec(0, 0, 0))
+				else
+					return
 				end
 				
 				vars.effectVariables.nameBackup = vars.name
 				vars.name = chaosEffects.effects["removeCurrentVehicle"].name
 			end,
 			onEffectTick = function(vars) 
-			
 				if vars.effectLifetime >= vars.effectVariables.revealTimer or vars.effectVariables.vehicle == 0 then
 					vars.name = vars.effectVariables.nameBackup
 					vars.effectDuration = 0
-					vars.effectLifetime = 0
 
 					local vehicle = vars.effectVariables.vehicle
+					
 					if vehicle ~= 0 then
 						local vehicleBody = GetVehicleBody(vehicle)
+						
+						SetBodyDynamic(vehicleBody, true)
 					
 						SetBodyTransform(vehicleBody, vars.effectVariables.transform)
-						SetBodyVelocity(vehicleBody, Vec(0,0,0))
-						SetBodyDynamic(vehicleBody, true)
+						
+						SetBodyVelocity(vehicleBody, Vec(0, 0, 0))
+						
 						SetPlayerVehicle(vehicle)
 					end
 				else
@@ -1588,7 +1598,7 @@ chaosEffects = {
 			hideTimer = false,
 			effectSFX = {},
 			effectSprites = {},
-			effectVariables = {},
+			effectVariables = { affectedBodies = {}},
 			onEffectStart = function(vars) end,
 			onEffectTick = function(vars)
 				local playerPos = GetPlayerPos()
@@ -1600,26 +1610,31 @@ chaosEffects = {
 				
 				local minPos = VecAdd(playerPos, Vec(-range, -range, -range))
 				local maxPos = VecAdd(playerPos, Vec(range, range, range))
-				local shapeList = QueryAabbShapes(minPos, maxPos)
+				local shapeList = QueryAabbBodies(minPos, maxPos)
 				
-				for key, value in ipairs(shapeList) do
-					local shapeBody = GetShapeBody(value)
-				
-					--[[ Always returns false, even on dynamic bodies?
-					if not IsBodyDynamic(shapeBody) then
-						return
-					end]]--
-
-					local shapeTransform = GetBodyTransform(shape)
-
-					local bodyVelocity = GetBodyVelocity(shapeBody)
+				for i = 1, #shapeList do
+					local shapeBody = shapeList[i]
 					
-					bodyVelocity[2] = 0.5
+					if IsBodyDynamic(shapeBody) then
+							
+						if vars.effectVariables.affectedBodies[shapeBody] == nil then
+							vars.effectVariables.affectedBodies[shapeBody] = "hit"
+						end
+		
+						local bodyVelocity = GetBodyVelocity(shapeBody)
 					
-					SetBodyVelocity(shapeBody, bodyVelocity)
+						bodyVelocity[2] = 0.5
+					
+						SetBodyVelocity(shapeBody, bodyVelocity)
+					end
 				end
 			end,
-			onEffectEnd = function(vars) end,
+			onEffectEnd = function(vars) 
+				for shapeBody, value in pairs(vars.effectVariables.affectedBodies) do
+					local shapeTransform = GetBodyTransform(shapeBody)
+					ApplyBodyImpulse(shapeBody, shapeTransform.pos, Vec(0, -1, 0))
+				end
+			end,
 		},
 		
 		explosivePunch = {
@@ -1650,9 +1665,9 @@ chaosEffects = {
 			onEffectEnd = function(vars) end,
 		},
 		
-		--[[suddenFlood = {
-			name = "Flood",
-			effectDuration = 10,--20,
+		suddenFlood = {
+			name = "Sudden Flood",
+			effectDuration = 30,
 			effectLifetime = 0,
 			hideTimer = false,
 			effectSFX = {},
@@ -1688,22 +1703,19 @@ chaosEffects = {
 				for key, value in ipairs(shapeList) do
 					local shapeBody = GetShapeBody(value)
 				
-					--[ Always returns false, even on dynamic bodies?
-					if not IsBodyDynamic(shapeBody) then
-						return
-					end]--
+					if IsBodyDynamic(shapeBody) then
+						local shapeTransform = GetBodyTransform(shape)
 
-					local shapeTransform = GetBodyTransform(shape)
-
-					local bodyVelocity = GetBodyVelocity(shapeBody)
-					
-					--local bodyMass = GetBodyMass(shapeBody)
-					
-					--DebugPrint(bodyMass)
-					
-					bodyVelocity[2] = 0.1 * math.abs(shapeTransform.pos[2] - (vars.effectVariables.waterHeight - floatHeightDiff))--5 / 20000 * bodyMass
-					
-					SetBodyVelocity(shapeBody, bodyVelocity)
+						local bodyVelocity = GetBodyVelocity(shapeBody)
+						
+						--local bodyMass = GetBodyMass(shapeBody)
+						
+						--DebugPrint(bodyMass)
+						
+						bodyVelocity[2] = 0.1 * math.abs(shapeTransform.pos[2] - (vars.effectVariables.waterHeight - floatHeightDiff))--5 / 20000 * bodyMass
+						
+						SetBodyVelocity(shapeBody, bodyVelocity)
+					end
 				end
 				
 				-- End Object Behaviour
@@ -1741,7 +1753,7 @@ chaosEffects = {
 				-- End Player Behaviour
 			end,
 			onEffectEnd = function(vars) end,
-		},]]--
+		},
 		
 		dontStopDriving = {
 			name = "Speed",
@@ -1859,7 +1871,7 @@ chaosEffects = {
 				
 				local fogStep = 0.5
 				local fogLayers = 100
-				local fogStart = 100
+				local fogStart = 60
 				
 				for i = 1, fogLayers do
 					local spritePos = VecAdd(cameraTransform.pos, VecScale(forwardDirection, fogStart - i * fogStep))
@@ -2019,7 +2031,867 @@ chaosEffects = {
 			end,
 			onEffectEnd = function(vars) end,
 		},
-	},
+		
+		simonSays = {
+			name = "Gordon Says",
+			effectDuration = 15,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = { activeDelay = 2, forcedInput = {key = "up", message = "moving forward"}},
+			onEffectStart = function(vars) 
+				local possibleInputs = {{key = "up", message = "moving forwards"},
+										{key = "down", message = "moving backwards"},
+										{key = "left", message = "moving left"}, 
+										{key = "right", message = "moving right"}}
+				
+				local selectedInput = possibleInputs[math.random(1, #possibleInputs)]
+				
+				vars.effectVariables.forcedInput = selectedInput
+				
+			end,
+			onEffectTick = function(vars) 
+				local forcedInput = vars.effectVariables.forcedInput
+			
+				table.insert(drawCallQueue, function()
+					UiPush()
+						UiFont("regular.ttf", 52)
+						UiTextShadow(0, 0, 0, 0.5, 2.0)
+						
+						UiAlign("center middle")
+						
+						UiTranslate(UiCenter(), UiHeight() * 0.2)
+						
+						UiText("Gordon Says")
+						
+						UiTranslate(0, 40)
+						
+						UiFont("regular.ttf", 26)
+						
+						UiText("Keep " .. forcedInput.message.. "!")
+					UiPop()
+				end)
+			
+				if vars.effectVariables.activeDelay > 0 then
+					vars.effectVariables.activeDelay = vars.effectVariables.activeDelay - GetChaosTimeStep()
+					return
+				end
+				
+				if not InputDown(forcedInput.key) then
+					local playerPos = GetPlayerPos()
+					Explosion(playerPos, 3)
+					SetPlayerHealth(0)
+					vars.effectDuration = 0
+					return
+				end
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		teleportToHeaven = {
+			name = "Teleport To Heaven",
+			effectDuration = 50,
+			effectLifetime = 0,
+			hideTimer = true,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = {},
+			onEffectStart = function(vars) 
+				SetPlayerVehicle(0)
+				
+				local playerTransform = GetPlayerTransform()
+				
+				playerTransform.pos = VecAdd(playerTransform.pos, Vec(0, 500, 0))
+				
+				SetPlayerTransform(playerTransform)
+			end,
+			onEffectTick = function(vars) 
+				local playerTransform = GetPlayerTransform()
+				local rayDirection = TransformToParentVec(playerTransform, Vec(0, -1, 0))
+ 
+				local hit, hitPoint, distance, normal = raycast(playerTransform.pos, rayDirection, 2)
+				
+				if hit == false then
+					return
+				end
+				
+				SetPlayerHealth(0.2)
+				SetPlayerVelocity(Vec(0, 0, 0))
+				
+				vars.effectDuration = 0
+				vars.effectLifetime = 0
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		jumpyVehicles = {
+			name = "Jumpy Vehicles",
+			effectDuration = 20,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = {vehicles = {}},
+			onEffectStart = function(vars)
+				local range = 500
+				local minPos = Vec(-range, -range, -range)
+				local maxPos = Vec(range, range, range)
+				local nearbyShapes = QueryAabbShapes(minPos, maxPos)
+
+				for i = 1, #nearbyShapes do
+					local currentShape = nearbyShapes[i]
+					local shapeBody = GetShapeBody(currentShape)
+					
+					local vehicleHandle = GetBodyVehicle(shapeBody)
+					
+					if vehicleHandle ~= 0 then
+						vars.effectVariables.vehicles[#vars.effectVariables.vehicles + 1] = {handle = vehicleHandle, jumpTimer = math.random(0, 3)}
+					end
+				end
+			end,
+			onEffectTick = function(vars)
+				for index, vehicleData in ipairs(vars.effectVariables.vehicles) do
+					if math.random(1, 10) > 5 and vehicleData.jumpTimer <= 0 then
+						vehicleData.jumpTimer = 5
+						
+						local vehicleHandle = vehicleData.handle
+						
+						local vehicleBody = GetVehicleBody(vehicleHandle)
+						
+						local vehicleVelocity = VecCopy(GetBodyVelocity(vehicleBody))
+						
+						vehicleVelocity[2] = 5
+						
+						SetBodyVelocity(vehicleBody, vehicleVelocity)
+						
+					else
+						local vehicleTransform = GetVehicleTransform(vehicleData.handle)
+						local vehicleBody = GetBodyTransform(vehicleTransform)
+						
+						DrawBodyOutline(vehicleBody)
+						vehicleData.jumpTimer = vehicleData.jumpTimer - GetChaosTimeStep()
+					end
+				end
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		hacking = {
+			name = "Hacking",
+			effectDuration = 60,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = { currHack = "nil", lives = 4, damageAlpha = 0, wordWheels = {}, currentHackPos = 1, ip = {19, 20, 16, 80}, playerPos = nil, barLineUpBars = {}},
+			onEffectStart = function(vars) 
+				vars.effectVariables.playerPos = GetPlayerPos()
+			
+				local hackTypes = {"letterLineup", "barLineup",}-- "ipLookup"}
+				
+				local letterLineupWords = {"teardown", "lockelle", "xplosive", "shotguns", "destroyd", "chaosmod"} --"resident"
+				local letterLineupLetters = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
+				
+				local hackType = hackTypes[math.random(1, #hackTypes)]
+
+				function getRandomLetter()
+					return letterLineupLetters[math.random(1, #letterLineupLetters)]
+				end
+				
+				if hackType == "letterLineup" then
+					local word = letterLineupWords[math.random(1, #letterLineupWords)]
+					
+					for i = 1, 8 do
+						local currLetter = word:sub(i, i)
+						local wordWheel = { offset = math.random(0, 9), locked = false, letters = {currLetter} }
+						
+						for j = 2, 10 do
+							local garbageLetter = currLetter
+							
+							while garbageLetter == currLetter do
+								garbageLetter = getRandomLetter()
+							end
+							
+							wordWheel.letters[j] = garbageLetter
+						end
+						
+						vars.effectVariables.wordWheels[i] = wordWheel
+					end
+				elseif hackType == "ipLookup" then
+				elseif hackType == "barLineup" then
+					vars.effectVariables.barLineUpBars[1] = { value = 1, direction = 1, locked = false}
+					for i = 2, 8 do
+						local val = 1 - i * 0.2
+						local dir = 1
+						
+						if val > 1 then
+							val = 1
+							dir = -1
+						elseif val < -1 then
+							val = -1
+							dir = 1
+						end
+						
+						vars.effectVariables.barLineUpBars[i] = { value = val, direction = dir }
+					end
+				end
+
+				vars.effectVariables.currHack = hackType
+			end,
+			onEffectTick = function(vars) 
+				function endMinigame()
+					vars.effectLifetime = vars.effectDuration
+				end
+				
+				if vars.effectVariables.lives <= 0 then
+					endMinigame()
+					return
+				end
+			
+				SetPlayerTransform(Transform(vars.effectVariables.playerPos, Quat(0, 0, 0, 0)))
+				
+				local hackType = vars.effectVariables.currHack
+				local drawCall = function() end
+				
+				local damageAlpha = vars.effectVariables.damageAlpha
+				
+				if damageAlpha > 0 then
+					damageAlpha = damageAlpha - GetChaosTimeStep()
+				end
+				
+				vars.effectVariables.damageAlpha = damageAlpha
+				
+				function drawBlackScreen()
+					UiPush()
+						UiColor(0, 0, 0, 1)
+						
+						UiAlign("center middle")
+						
+						UiTranslate(UiCenter(), UiMiddle())
+						
+						UiRect(UiWidth() + 10, UiHeight() + 10)
+					UiPop()
+				end
+				
+				function drawWindow()
+					UiPush()
+						UiAlign("center middle")
+							
+						UiTranslate(UiCenter(), UiMiddle())
+						
+						UiColor(0.4, 0.4, 1, 1)
+						
+						UiRect(UiWidth() * 0.6, UiHeight() * 0.7)
+						
+						UiColor(0, 0, 0, 1)
+						
+						UiTranslate(0, UiHeight() * 0.02)
+						
+						UiRect(UiWidth() * 0.595, UiHeight() * 0.65)
+					UiPop()
+				end
+				
+				function drawLives()
+					UiPush()
+						UiAlign("center middle")
+							
+						UiTranslate(UiCenter(), UiMiddle())
+						
+						UiTranslate(UiWidth() * 0.25, -UiHeight() * 0.25)
+						
+						UiAlign("center bottom")
+						
+						for i = 0, 3 do
+							UiPush()
+								if i + 1 <= vars.effectVariables.lives then
+									UiColor(0, 0.8, 0.8, 1)
+								else
+									UiColor(0.5, 0.5, 0.5, 1)
+								end
+							
+								UiTranslate(13 * i, 0)
+								UiRect(10, 10 + i * 7)
+							UiPop()
+						end
+					UiPop()
+				end
+				
+				function drawDamage()
+					UiPush()
+						UiAlign("center middle")
+							
+						UiTranslate(UiCenter(), UiMiddle())
+						
+						UiColor(1, 0, 0, vars.effectVariables.damageAlpha)
+						
+						UiTranslate(0, UiHeight() * 0.02)
+						
+						UiRect(UiWidth() * 0.595, UiHeight() * 0.65)
+					UiPop()
+				end
+				
+				function loseLive()
+					vars.effectVariables.damageAlpha = 1
+					vars.effectVariables.lives = vars.effectVariables.lives - 1
+				end
+				
+				function resetWordWheels()
+					loseLive()
+					vars.effectVariables.currentWordWheel = 1
+					
+					for i = 1, 8 do
+						local wordWheel = vars.effectVariables.wordWheels[i]
+						
+						wordWheel.offset = math.random(0, 9)
+						wordWheel.locked = false
+					end
+				end
+				
+				function barLineupLoseLevel()
+					loseLive()
+					local currentBarIndex = vars.effectVariables.currentHackPos
+					
+					if currentBarIndex > 1 then
+						currentBarIndex = vars.effectVariables.currentHackPos - 1
+						vars.effectVariables.currentHackPos = currentBarIndex
+					end
+					
+					local currentBar = vars.effectVariables.barLineUpBars[currentBarIndex]
+					
+					currentBar.locked = false
+				end
+				
+				if hackType == "letterLineup" then
+					for i = 1, 8 do
+						local wordWheel = vars.effectVariables.wordWheels[i]
+						
+						if not wordWheel.locked then
+							
+							wordWheel.offset = wordWheel.offset + GetChaosTimeStep() * 4
+							
+							if wordWheel.offset > 10 then
+								wordWheel.offset = 0
+							end
+						end
+					end
+					
+					if vars.effectVariables.currentHackPos > 8 then
+						endMinigame()
+						return
+					end
+					
+					if InputPressed("space") then
+						local currentWordWheelIndex = vars.effectVariables.currentHackPos
+						local currentWordWheel = vars.effectVariables.wordWheels[currentWordWheelIndex]
+						local currOffset = currentWordWheel.offset
+						
+						if currOffset >= 0 and currOffset <= 2 then
+							currentWordWheel.offset = 1
+							currentWordWheel.locked = true
+							vars.effectVariables.currentHackPos = currentWordWheelIndex + 1
+						else
+							resetWordWheels()
+						end
+					end
+				
+					drawCall = function()
+						UiPush()
+							drawBlackScreen()
+							drawWindow()
+							drawLives()
+							
+							local offset = 5
+							local width = UiWidth() * 0.5 / 8
+							
+							UiPush()
+								UiAlign("center middle")
+								UiTranslate(UiCenter(), UiMiddle())
+							
+								UiTranslate(-(width + offset) * 3.5, UiHeight() * 0.075) --0.175
+								
+								for i = 0, 7 do
+									local wordWheel = vars.effectVariables.wordWheels[i + 1]
+								
+									UiPush()
+										UiTranslate((width + offset) * i, 0)-- UiHeight() * 0.15)
+										
+										UiWindow(width, UiHeight() * 0.4, true)
+										
+										UiColor(0.3, 0.3, 0.3, 1)
+										
+										UiRect(UiWidth() * 2, UiHeight() * 2)
+										
+										UiColor(0, 0, 0, 1)
+										
+										UiTranslate(UiCenter(), UiMiddle())
+										
+										UiRect(UiWidth() * 0.97, UiHeight())
+										
+										UiColor(1, 1, 1, 1)
+										
+										UiFont("regular.ttf", 80)
+										
+										for j = -2, 12 do
+											UiPush()
+												local letter = ""
+												
+												if j < 1 then
+													letter = wordWheel.letters[10 + j]
+												elseif j > 10 then
+													letter = wordWheel.letters[j - 10]
+												else
+													letter = wordWheel.letters[j]
+												end
+												
+												if letter == wordWheel.letters[1] then
+													UiColor(1, 0, 0, 1)
+												end
+											
+												UiTranslate(0, -UiHeight() / 5 * wordWheel.offset)
+												UiTranslate(0, UiHeight() / 5 * j)
+												UiText(letter)
+											UiPop()
+										end
+									UiPop()
+								end
+							UiPop()
+							
+							UiPush()
+								UiAlign("center middle")
+								UiTranslate(UiCenter(), UiMiddle())
+							
+								UiColor(1, 0, 0, 0.5)
+								
+								UiTranslate(0, UiHeight() * 0.075 / 2)
+								
+								UiRect((width + offset) * 8, 2)
+								
+								UiTranslate(-(width + offset) * 4, UiHeight() * 0.075 / 2)
+								
+								UiRect(2, UiHeight() * 0.075)
+								
+								UiTranslate((width + offset) * 8, 0)
+								
+								UiRect(2, UiHeight() * 0.075)
+								
+								UiTranslate(-(width + offset) * 4, UiHeight() * 0.075 / 2)
+								
+								UiRect((width + offset) * 8, 2)
+							UiPop()
+							
+							drawDamage()
+						UiPop()
+					end
+				elseif hackType == "ipLookup" then
+					drawCall = function()
+						UiPush()
+							drawBlackScreen()
+							drawWindow()
+							drawLives()
+							
+						UiPop()
+					end
+				elseif hackType == "barLineup" then
+					for i = 1, 8 do
+						local currBar = vars.effectVariables.barLineUpBars[i]
+						
+						if not currBar.locked then
+							local dir = currBar.direction
+							local val = currBar.value + GetChaosTimeStep() * dir * 1.5
+							
+							if val > 1 then
+								val = 1
+								dir = -1
+							elseif val < -1 then
+								val = -1
+								dir = 1
+							end
+							
+							currBar.value = val
+							currBar.direction = dir
+						end
+					end
+					
+					if vars.effectVariables.currentHackPos > 8 then
+						endMinigame()
+						return
+					end
+					
+					if InputPressed("space") then
+						local currentBarIndex = vars.effectVariables.currentHackPos
+						local currentBar = vars.effectVariables.barLineUpBars[currentBarIndex]
+						local currValue = currentBar.value
+						
+						if currValue <= 0.2 and currValue >= -0.2 then
+							currentBar.value = 0
+							currentBar.locked = true
+							vars.effectVariables.currentHackPos = currentBarIndex + 1
+						else
+							barLineupLoseLevel()
+						end
+					end
+				
+					drawCall = function()
+						UiPush()
+							drawBlackScreen()
+							drawWindow()
+							drawLives()
+							
+							UiPush()
+								UiAlign("center middle")
+								UiTranslate(UiCenter(), UiMiddle())
+							
+								local barHeight = UiHeight() * 0.2
+								local barWidth = UiHeight() * 0.025
+								local offset = UiWidth() * 0.075 / 8
+							
+								UiTranslate(0, UiHeight() * 0.1)
+								
+								UiColor(1, 0, 0, 1)
+								
+								UiRect(UiHeight() * 0.5, UiHeight() * 0.4)
+								
+								UiColor(0, 0, 0, 1)
+								
+								UiRect(UiHeight() * 0.49, UiHeight() * 0.39)
+								
+								UiColor(1, 0, 0, 1)
+								
+								UiRect(UiHeight() * 0.5, barHeight * 0.15)
+								
+								UiTranslate(-(barWidth + offset) * 4.5, 0)
+								
+								for i = 1, 8 do
+									local currVal = vars.effectVariables.barLineUpBars[i].value
+								
+									UiPush()
+										UiTranslate((barWidth + offset) * i, currVal * 100)
+										
+										UiColor(1, 1, 1, 1)
+										
+										UiTranslate(0, -barHeight * 0.3)
+										
+										if vars.effectVariables.currentHackPos == i then
+											UiColor(0.9, 0.9, 0, 1)
+											UiRect(barWidth + 6, barHeight * 0.4 + 6)
+											UiColor(1, 1, 1, 1)
+										end
+										
+										UiRect(barWidth, barHeight * 0.4)
+										
+										UiTranslate(0, barHeight * 0.6)
+										
+										if vars.effectVariables.currentHackPos == i then
+											UiColor(0.9, 0.9, 0, 1)
+											UiRect(barWidth + 6, barHeight * 0.4 + 6)
+											UiColor(1, 1, 1, 1)
+										end
+										
+										UiRect(barWidth, barHeight * 0.4)
+									UiPop()
+								end
+							UiPop()
+							
+							drawDamage()
+						UiPop()
+					end
+				end
+				
+				UiMakeInteractive()
+				table.insert(drawCallQueue, drawCall)
+			end,
+			onEffectEnd = function(vars) 
+				if vars.effectVariables.lives <= 0 then
+					local playerPos = GetPlayerPos()
+					Explosion(playerPos, 3)
+					SetPlayerHealth(0)
+				end
+			end,
+		},
+		
+		grieferJesus = {
+			name = "Griefer Jesus",
+			effectDuration = 30,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {"MOD/sprites/grieferJesus/Playa1.png", 
+							 "MOD/sprites/grieferJesus/Playa2.png", 
+							 "MOD/sprites/grieferJesus/Playa3.png", 
+							 "MOD/sprites/grieferJesus/Playa4.png", 
+							 "MOD/sprites/grieferJesus/Playa5.png", 
+							 "MOD/sprites/grieferJesus/Playa6.png", 
+							 "MOD/sprites/grieferJesus/Playa7.png", 
+							 "MOD/sprites/grieferJesus/Playa8.png"},
+			effectVariables = { npcTransform = nil, attackCooldown = 5, maxCooldown = 5},
+			onEffectStart = function(vars) 
+				local playerCameraTransform = GetPlayerCameraTransform()
+				local cameraForward = Vec(0, 0, -5)
+				local cameraForwardWorldSpace = TransformToParentPoint(playerCameraTransform, cameraForward)
+				
+				cameraForwardWorldSpace[2] = GetPlayerPos()[2]
+				
+				vars.effectVariables.npcTransform = Transform(cameraForwardWorldSpace, QuatEuler(0, 0, 0))
+			end,
+			onEffectTick = function(vars) 
+				local grieferTransform = vars.effectVariables.npcTransform
+				local grieferForward = Vec(0, 0, -1)
+				local cameraTransform = GetCameraTransform()
+				local cameraPos = VecCopy(cameraTransform.pos)
+				
+				local playerPos = GetPlayerPos()
+				
+				cameraPos[2] = grieferTransform.pos[2]
+				
+				-- RENDER SPRITE BEHAVIOR
+				
+				local dirToPlayer = dirVec(grieferTransform.pos, cameraPos)
+				local localSpaceDirToPlayer = TransformToLocalVec(grieferTransform, dirToPlayer)
+				
+				local currentAngle = VecAngle360(grieferForward, localSpaceDirToPlayer)
+				
+				if currentAngle < 0 then
+					currentAngle = currentAngle + 360
+				end
+				
+				local viewPoint = ((currentAngle - (currentAngle % 45)) / 45) + 1
+				
+				local spriteRot = QuatLookAt(grieferTransform.pos, cameraPos)
+				
+				local spriteTransform = Transform(grieferTransform.pos, spriteRot)
+				
+				DrawSprite(vars.effectSprites[viewPoint],  spriteTransform, 1, 2, 1, 1, 1, 1, true, false)
+				
+				-- MOVEMENT BEHAVIOR
+				
+				-- -- ROTATE TOWARDS PLAYER BEHAVIOR
+				
+				local endRot = QuatLookAt(grieferTransform.pos, cameraPos)
+				
+				local rotStep = QuatSlerp(grieferTransform.rot, endRot, GetChaosTimeStep() * 2)
+				
+				grieferTransform.rot = rotStep
+				
+				-- MOVEMENT
+				
+				local grieferBackwards = VecScale(grieferForward, -1)
+				local grieferRight = Vec(1, 0, 0)
+				local grieferLeft = VecScale(grieferRight, -1)
+				
+				local walkSpeed = 2.5
+				
+				local distanceFromPlayer = VecDist(grieferTransform.pos, playerPos)
+				
+				function CanSeePlayer()
+					local rayStart = grieferTransform.pos
+					local rayDir = dirVec(grieferTransform.pos, playerPos)
+					local rayDist = VecDist(grieferTransform.pos, playerPos)
+					local hit, hitPoint = raycast(rayStart, rayDir, rayDist, true)
+					
+					return not hit
+				end
+				
+				function canMoveTowards(direction)
+					local directionWorldSpace = TransformToParentPoint(grieferTransform, direction)
+					local dirVector = dirVec(grieferTransform.pos, directionWorldSpace)
+					
+					local hit = raycast(grieferTransform.pos, dirVector, 1, 0.25)
+					
+					return not hit
+				end
+					
+				function moveTowards(direction)
+					local directionWorldSpace = TransformToParentPoint(grieferTransform, direction)
+					local dirVector = dirVec(grieferTransform.pos, directionWorldSpace)
+					
+					local newPos = VecCopy(grieferTransform.pos)
+					
+					local movedDistance = VecScale(dirVector, walkSpeed * GetChaosTimeStep())
+					
+					newPos = VecAdd(newPos, movedDistance)
+					
+					grieferTransform.pos = newPos
+				end
+				
+				if not CanSeePlayer() or distanceFromPlayer > 30 then
+					
+					if canMoveTowards(grieferForward) then
+						moveTowards(grieferForward)
+					elseif canMoveTowards(grieferRight) then
+						moveTowards(grieferRight)
+					elseif canMoveTowards(grieferLeft) then
+						moveTowards(grieferLeft)
+					elseif canMoveTowards(grieferBackwards) then
+						moveTowards(grieferBackwards)
+					end
+				end
+				
+				-- ATTACK BEHAVIOR
+				
+				function FireShot(rayDist, rayOffset)
+					local rayStart = grieferTransform.pos
+					
+					local rayDir = dirVec(grieferTransform.pos, playerPos)
+					
+					rayDir = VecAdd(rayDir, rayOffset)
+					
+					local shotLocation = VecAdd(rayStart, VecScale(rayDir, rayDist))
+					
+					local hit, hitPoint = raycast(rayStart, rayDir, rayDist)
+					
+					return shotLocation, hit, hitPoint
+				end
+				
+				function SpawnParticles(startPoint, endPoint)
+					local particleDist = VecDist(startPoint, endPoint)
+				
+					local particles = math.floor(particleDist)
+					
+					local particleDir = dirVec(startPoint, endPoint)
+					
+					ParticleReset()
+					ParticleType("smoke")
+					ParticleRadius(0.1, 0.3)
+					ParticleGravity(0, 0.4)
+					ParticleCollide(1)
+					
+					for i = 1, particles do
+						local currPos = VecAdd(startPoint, VecScale(particleDir, i))
+						
+						SpawnParticle(currPos, particleDir, 3)
+					end
+				end
+				
+				vars.effectVariables.attackCooldown = vars.effectVariables.attackCooldown - GetChaosTimeStep()
+				
+				if math.random(1, 10) < 5 or vars.effectVariables.attackCooldown >= 0 then
+					return
+				end
+				
+				vars.effectVariables.attackCooldown = vars.effectVariables.maxCooldown
+				
+				local attackAngle = 15
+				
+				if currentAngle < attackAngle or currentAngle > 360 - attackAngle then
+					local rayDist = VecDist(grieferTransform.pos, playerPos)
+					local rayOffset = rndVec(rayDist / 5000)
+					
+					local shotLocation, hit, hitPoint = FireShot(rayDist, rayOffset)
+					
+					if not hit then
+						local distToPlayer = VecDist(shotLocation, playerPos)
+						
+						if distToPlayer <= 0.25 then
+							local playerHealth = GetPlayerHealth() - 0.7
+							
+							Explosion(shotLocation, 3)
+							SetPlayerHealth(playerHealth)
+							SpawnParticles(grieferTransform.pos, shotLocation)
+						else
+							local secondShotLocation, secondHit, secondHitPoint = FireShot(rayDist * 2, rayOffset)
+							
+							if secondHit then
+								Explosion(secondHitPoint, 3)
+								SpawnParticles(grieferTransform.pos, secondHitPoint)
+							else
+								SpawnParticles(grieferTransform.pos, secondShotLocation)
+								Explosion(secondShotLocation, 3)
+							end
+						end
+					else
+						local distToHit = VecDist(grieferTransform.pos, hitPoint)
+						
+						SpawnParticles(grieferTransform.pos, hitPoint)
+						
+						Explosion(hitPoint, 3)
+					end
+				end
+				
+			end,
+			onEffectEnd = function(vars) end,
+		},
+		
+		gravityField = {
+			name = "Gravity Field",
+			effectDuration = 15,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = { affectedBodies = {}},
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars)
+				local playerPos = GetPlayerPos()
+				local range = 50
+
+				local minPos = VecAdd(playerPos, Vec(-range, -range, -range))
+				local maxPos = VecAdd(playerPos, Vec(range, range, range))
+				local shapeList = QueryAabbBodies(minPos, maxPos)
+				
+				for i = 1, #shapeList do
+					local shapeBody = shapeList[i]
+					
+					if IsBodyDynamic(shapeBody) then
+							
+						if vars.effectVariables.affectedBodies[shapeBody] == nil then
+							vars.effectVariables.affectedBodies[shapeBody] = "hit"
+						end
+		
+						local shapeTransform = GetBodyTransform(shapeBody)
+						
+						local dirToPlayer = VecScale(dirVec(shapeTransform.pos, playerPos), 5)
+						
+						local bodyVelocity = dirToPlayer
+						
+						SetBodyVelocity(shapeBody, bodyVelocity)
+					end
+				end
+			end,
+			onEffectEnd = function(vars) 
+				for shapeBody, value in pairs(vars.effectVariables.affectedBodies) do
+					local shapeTransform = GetBodyTransform(shapeBody)
+					ApplyBodyImpulse(shapeBody, shapeTransform.pos, Vec(0, -1, 0))
+				end
+			end,
+		},
+		
+		
+		randomInformation = {
+			name = "Useless Information",
+			effectDuration = 15,
+			effectLifetime = 0,
+			hideTimer = false,
+			effectSFX = {},
+			effectSprites = {},
+			effectVariables = {},
+			onEffectStart = function(vars) end,
+			onEffectTick = function(vars)
+				local gpv = GetPlayerVehicle()
+				local fire = GetFireCount()
+				local health = GetPlayerHealth()
+				local shape = GetPlayerPickShape()
+				if shape ~= 0 then
+					DrawShapeOutline(shape, 0.5)
+				end
+				
+				table.insert(drawCallQueue, function()
+					UiPush()
+						UiFont("regular.ttf", 30)
+						UiTextShadow(0, 0, 0, 0.5, 2.0)
+						UiAlign("left")
+						UiTranslate(UiCenter() * 0.3, UiHeight() * 0.2)
+						UiText("Active fires: " .. fire) -- Fire counter
+						UiTranslate(0, 40)
+						UiText("Player Vehicle Handle: " .. gpv) -- Player vehicle handle
+						UiTranslate(0, 40)
+						UiText("Player Health: " .. math.floor(health * 100)) -- Health
+					UiPop()
+				end)
+			end,
+			onEffectEnd = function(vars) end,
+		},
+	},	-- EFFECTS TABLE
 }
 
 chaosKeysInit()

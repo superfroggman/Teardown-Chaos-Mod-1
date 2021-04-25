@@ -52,6 +52,21 @@ function saveFileInit()
 		
 		SetString(moddataPrefix.. "DisabledEffects", SerializeTable(chaosEffects.disabledEffects))
 	end
+	
+	if saveVersion < 5 then
+		saveVersion = 5
+		SetInt(moddataPrefix .. "Version", 5)
+		
+		chaosEffects.disabledEffects = DeserializeTable(GetString(moddataPrefix.. "DisabledEffects"))
+		
+		if chaosEffects.disabledEffects["quakefov"] ~= nil then
+			chaosEffects.disabledEffects["quakefov"] = nil
+			DebugPrint("Quake FOV enabled, because it now works with tools.")
+			DebugPrint("This reset will only occur once.")
+		end
+		
+		SetString(moddataPrefix.. "DisabledEffects", SerializeTable(chaosEffects.disabledEffects))
+	end
 end
 
 function SerializeTable(a) -- Currently only works for key value string tables! (Ignores values)
@@ -105,7 +120,7 @@ function tableToText(inputTable, loopThroughTables)
 		elseif type(value) == "table" and loopThroughTables then
 			returnString = returnString .. key .. " = " .. tableToText(value) .. ", "
 		else
-			returnString = returnString .. key .. " = " .. type(value) .. ", "
+			returnString = returnString .. key .. " = " .. tostring(value) .. ", "
 		end
 	end
 	returnString = returnString .. "}"
@@ -174,12 +189,43 @@ function dirVec(a, b)
 	return VecNormalize(VecSub(b, a))
 end
 
+function VecAngle(a, b)
+	local magA = VecMag(a)
+	local magB = VecMag(b)
+	
+	local dotP = VecDot(a, b)
+	
+	local angle = math.deg(math.acos(dotP / (magA * magB)))
+	
+	return angle
+end
+
+function VecDet(a, b)
+	local firstDet = a[1] * b[3]
+	local secondDet = a[3] * b[1]
+	
+	return firstDet - secondDet
+end
+
+function VecAngle360(a, b)
+	local det = VecDet(a, b)
+	local dot = VecDot(a, b)
+	
+	local angle = math.deg(math.atan2(det, dot))
+	
+	return angle
+end
+
 function VecDist(a, b)
 	local directionVector = VecSub(b, a)
 	
-	local distance = math.sqrt(directionVector[1]^2 +  directionVector[2]^2 +  directionVector[3]^2)
+	local distance = VecMag(directionVector)
 	
 	return distance
+end
+
+function VecMag(a)
+	return math.sqrt(a[1]^2 + a[2]^2 + a[3]^2)
 end
 
 function VecToString(vec)
